@@ -10,6 +10,9 @@
 extern uint64_t __htif_base;
 volatile uint64_t tohost __attribute__((section(".htif")));
 volatile uint64_t fromhost __attribute__((section(".htif")));
+
+volatile uint64_t tohost_v = 0x9000c000;
+volatile uint64_t fromhost_v = 0x9000c008;
 volatile int htif_console_buf;
 static spinlock_t htif_lock = SPINLOCK_INIT;
 uintptr_t htif;
@@ -22,10 +25,10 @@ uintptr_t htif;
 
 static void __check_fromhost()
 {
-  uint64_t fh = fromhost;
+  uint64_t fh = fromhost_v;
   if (!fh)
     return;
-  fromhost = 0;
+  fromhost_v = 0;
 
   // this should be from the console
   assert(FROMHOST_DEV(fh) == 1);
@@ -42,9 +45,9 @@ static void __check_fromhost()
 
 static void __set_tohost(uintptr_t dev, uintptr_t cmd, uintptr_t data)
 {
-  while (tohost)
+  while (tohost_v)
     __check_fromhost();
-  tohost = TOHOST_CMD(dev, cmd, data);
+  tohost_v = TOHOST_CMD(dev, cmd, data);
 }
 
 int htif_console_getchar()
@@ -72,10 +75,10 @@ static void do_tohost_fromhost(uintptr_t dev, uintptr_t cmd, uintptr_t data)
     __set_tohost(dev, cmd, data);
 
     while (1) {
-      uint64_t fh = fromhost;
+      uint64_t fh = fromhost_v;
       if (fh) {
         if (FROMHOST_DEV(fh) == dev && FROMHOST_CMD(fh) == cmd) {
-          fromhost = 0;
+          fromhost_v = 0;
           break;
         }
         __check_fromhost();

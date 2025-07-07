@@ -555,6 +555,9 @@ static void init_early_alloc()
   free_pages = (mem_size - (first_free_page - MEM_START)) / RISCV_PGSIZE;
 }
 
+extern uint64_t __htif_base;
+volatile uintptr_t absolute_val = (volatile uintptr_t)&__htif_base;
+
 uintptr_t pk_vm_init()
 {
   init_early_alloc();
@@ -564,6 +567,12 @@ uintptr_t pk_vm_init()
 
   root_page_table = (void*)__page_alloc_assert();
   __map_kernel_range(KVA_START, MEM_START, mem_size, PROT_READ|PROT_WRITE|PROT_EXEC);
+
+  // add mapping for htif
+  //__map_kernel_page(0x10000000, 0x10000000, 1, PROT_READ|PROT_WRITE);
+  //__map_kernel_page(0xffffffbf90000000, 0x10000000, 1, PROT_READ|PROT_WRITE);
+  __map_kernel_page(0xffff803000000000, 0x10000000, 1, PROT_READ|PROT_WRITE);
+
 
   flush_tlb();
   write_csr(satp, ((uintptr_t)root_page_table >> RISCV_PGSHIFT) | SATP_MODE_CHOICE);
