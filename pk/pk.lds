@@ -4,12 +4,30 @@ OUTPUT_ARCH( "riscv" )
 
 ENTRY( reset_vector )
 
+MEMORY {
+  /* We assume at least 64 KiB SPM*/
+  spm (rwx)     : ORIGIN = 0x10000000, LENGTH = 64K
+  /* We  assume at least 8 MiB of DRAM (minimum for Linux). */
+  dram (rwx)    : ORIGIN = 0x80000000, LENGTH = 8M
+}
+
 SECTIONS
 {
 
   /*--------------------------------------------------------------------*/
   /* Code and read-only segment                                         */
   /*--------------------------------------------------------------------*/
+
+  /*--------------------------------------------------------------------*/
+  /* HTIF, isolated onto separate page                                  */
+  /*--------------------------------------------------------------------*/
+  . = 0x10000000;
+  .htif :
+  {
+    PROVIDE( __htif_base = . );
+    *(.htif)
+  } > spm
+
 
   /* Begining of code and text segment */
   . = MEM_START;
@@ -18,7 +36,7 @@ SECTIONS
   .text :
   {
     *(.text.init)
-  }
+  } > dram
 
   /* text: Program code section */
   .text : 
@@ -26,7 +44,7 @@ SECTIONS
     *(.text)
     *(.text.*)
     *(.gnu.linkonce.t.*)
-  }
+  } > dram
 
   /* rodata: Read-only data */
   .rodata : 
@@ -35,21 +53,11 @@ SECTIONS
     *(.rodata)
     *(.rodata.*)
     *(.gnu.linkonce.r.*)
-  }
+  } > dram
 
   /* End of code and read-only segment */
   . = ALIGN(0x1000);
   _etext = .;
-
-  /*--------------------------------------------------------------------*/
-  /* HTIF, isolated onto separate page                                  */
-  /*--------------------------------------------------------------------*/
-  .htif :
-  {
-    PROVIDE( __htif_base = . );
-    *(.htif)
-  }
-  . = ALIGN(0x1000);
 
   /*--------------------------------------------------------------------*/
   /* Initialized data segment                                           */
@@ -67,7 +75,8 @@ SECTIONS
     *(.srodata*)
     *(.gnu.linkonce.d.*)
     *(.comment)
-  }
+    *(.dtb)
+  } > dram
 
   /* End of initialized data segment */
   . = ALIGN(16);
@@ -94,7 +103,7 @@ SECTIONS
     *(.sbss*)
     *(.gnu.linkonce.b.*)
     *(COMMON)
-  }
+  } > dram
 
   . = ALIGN(0x1000);
   _end = .;
