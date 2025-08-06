@@ -559,10 +559,16 @@ uintptr_t pk_vm_init()
 {
   init_early_alloc();
 
-  size_t num_freelist_nodes = mem_size / RISCV_PGSIZE;
+  size_t num_freelist_nodes = mem_size / RISCV_PGSIZE; // Add SPM size
   page_freelist_storage = (freelist_node_t*)__early_alloc(num_freelist_nodes * sizeof(freelist_node_t));
 
   root_page_table = (void*)__page_alloc_assert();
+
+  // Create mapping for spm
+  __map_kernel_range(KVA_START-MEM_START+0x10000000, 0x10000000, 0x10000000, PROT_READ|PROT_WRITE);
+
+
+  // Mapping for the DRAM
   __map_kernel_range(KVA_START, MEM_START, mem_size, PROT_READ|PROT_WRITE|PROT_EXEC);
 
   flush_tlb();
